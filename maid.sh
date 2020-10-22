@@ -11,6 +11,7 @@ function usage()
     echo -e "\t-com --compiled\t\tDump generated code"
     echo -e "\t-f --frontend\t\tClear static content and generated views"
     echo -e "\t-p --permissions\tSet environment permissions"
+    echo -e "\t-d --deployment\tRun deployment tasks"
     echo -e ""
 }
 
@@ -65,6 +66,33 @@ function permissions()
     chown -R www-data:www-data pub/media
 }
 
+function deployment()
+{
+    echo "Run deployment tasks.."
+
+    echo "Performing composer install"
+    composer install
+    
+    echo "Cleaning Magento caches"
+    php bin/magento cache:clean
+
+    echo "Performing dependency injection compile"
+    php bin/magento setup:di:compile
+
+    echo "Performing upgrade migrations"
+    php bin/magento setup:upgrade --keep-generated
+
+    echo "Remove static content"
+    rm -rf var/view_preprocessed/* && rm -rf pub/static/*
+
+    echo "Deploying static content"
+    php bin/magento setup:static-content:deploy de_DE en_US
+
+    echo "Flushing Magento caches"
+    php bin/magento cache:flush
+
+}
+
 function checkEnv()
 {
     if ! test -f "bin/magento"; then
@@ -108,6 +136,12 @@ while [ "$1" != "" ]; do
         -p | --permissions)
             checkEnv
             permissions
+            echo "Done."
+            exit;
+            ;;
+        -d | --deployment)
+            checkEnv
+            deployment
             echo "Done."
             exit;
             ;;
